@@ -5,6 +5,7 @@ import { createMatchSchema, listMatchesQuerySchema } from "@/validation/matches.
 import { desc } from "drizzle-orm"
 import { Router } from "express"
 import type { Request, Response } from "express"
+import { parse } from "node:path"
 
 
 export const matchesRouter: Router = Router()
@@ -15,7 +16,7 @@ matchesRouter.get("/", async (req: Request, res: Response) => {
 
 
     if (!parsed.success) {
-        return res.status(400).json({ error: "Invalid query parameters", details: JSON.parse(JSON.stringify(parsed.error)) })
+        return res.status(400).json({ error: "Invalid query parameters", details: parsed.error.issues })
     }
 
     const limit = Math.min(parsed.data.limit ?? 50, MAX_LIMIT) // Cap the limit to 100
@@ -28,14 +29,14 @@ matchesRouter.get("/", async (req: Request, res: Response) => {
 
         res.json({ data })
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch matches", details: JSON.stringify(parsed.error) })
+        res.status(500).json({ error: "Failed to fetch matches" })
     }
 })
 
 matchesRouter.post("/", async (req: Request, res: Response) => {
     const parsed = createMatchSchema.safeParse(req.body)
     if (!parsed.success) {
-        return res.status(400).json({ error: "Invalid payload", details: JSON.parse(JSON.stringify(parsed.error)) })
+        return res.status(400).json({ error: "Invalid payload", details: parsed.error.issues })
     }
 
     try {
@@ -54,6 +55,6 @@ matchesRouter.post("/", async (req: Request, res: Response) => {
 
         res.status(201).json({ data: event })
     } catch (error) {
-        res.status(500).json({ error: "Failed to create match", details: JSON.stringify(parsed.error) })
+        res.status(500).json({ error: "Failed to create match" })
     }
 })
