@@ -7,7 +7,7 @@ import {
   timestamp,
   jsonb,
 } from "drizzle-orm/pg-core";
-import type { InferModel } from "drizzle-orm";
+import { type InferSelectModel, type InferInsertModel } from 'drizzle-orm';
 
 /**
  * Drizzle ORM TypeScript schema for a real-time sports application.
@@ -36,11 +36,11 @@ export const matches = pgTable("matches", {
   homeTeam: text("home_team").notNull(),
   awayTeam: text("away_team").notNull(),
   status: matchStatus("status").default("scheduled").notNull(),
-  startTime: timestamp("start_time", { mode: "utc" }),
-  endTime: timestamp("end_time", { mode: "utc" }),
+  startTime: timestamp("start_time", { mode: "date" }),
+  endTime: timestamp("end_time", { mode: "date" }),
   homeScore: integer("home_score").default(0).notNull(),
   awayScore: integer("away_score").default(0).notNull(),
-  createdAt: timestamp("created_at", { mode: "utc" }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });
 
 /** Commentary table */
@@ -59,12 +59,14 @@ export const commentary = pgTable("commentary", {
   metadata: jsonb("metadata"),
   // tags as a Postgres text[] column
   tags: text("tags").array(),
-  createdAt: timestamp("created_at", { mode: "utc" }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });
 
-/** Type helpers */
-export type Match = InferModel<typeof matches>;
-export type NewMatch = InferModel<typeof matches, "insert">;
 
-export type Commentary = InferModel<typeof commentary>;
-export type NewCommentary = InferModel<typeof commentary, "insert">;
+// Match Types
+export type Match = InferSelectModel<typeof matches>;
+export type NewMatch = InferInsertModel<typeof matches>;
+
+// Commentary Types
+export type Commentary = InferSelectModel<typeof commentary>;
+export type NewCommentary = InferInsertModel<typeof commentary>;
