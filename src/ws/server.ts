@@ -2,6 +2,14 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { Server } from 'node:http';
 import type { NewMatch } from '@/db/schema.js';
 
+declare global {
+    namespace WebSocketCustom {
+        interface WebSocket {
+            isAlive?: boolean;
+        }
+    }
+}
+
 type WsPayload =
     | { type: 'welcome'; message: string }
     | { type: 'matchCreated'; match: NewMatch };
@@ -25,14 +33,36 @@ export function attachWebSocketServer(server: Server) {
         maxPayload: 1024 * 1024, // 1MB
     });
 
-    wss.on('connection', (socket) => {
+    wss.on('connection', (socket: WebSocket & { isAlive?: boolean }) => {
+        socket.isAlive = true;
+        socket.on('pong', () => {
+            socket.isAlive = true;
+        });
+
         sendJson(socket, {
             type: 'welcome',
             message: 'Welcome to the WebSocket server!',
         });
 
         socket.on('error', console.error);
+
+
     });
+
+    const interval = setInterval(() => {
+        wss.clients.forEach((socket: WebSocket & { isAlive?: boolean }) => {
+            if (!socket.isAlive) {
+                return socket.terminate();
+            }
+            socket.isAlive = false;
+            socket.ping();
+        });
+    }, 3000);
+
+    wss.on('close', () => {
+        clearInterval(interval);
+    });
+
 
     function broadcastMatchCreated(match: NewMatch) {
         broadcast(wss, { type: 'matchCreated', match });
