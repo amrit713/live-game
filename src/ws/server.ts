@@ -1,6 +1,8 @@
 import { WebSocket, WebSocketServer } from 'ws';
 import { Server } from 'node:http';
 import type { NewMatch } from '@/db/schema.js';
+import { wsArcjet } from '@/arcject.js';
+import type { Request } from 'express';
 
 declare global {
     namespace WebSocketCustom {
@@ -33,7 +35,23 @@ export function attachWebSocketServer(server: Server) {
         maxPayload: 1024 * 1024, // 1MB
     });
 
-    wss.on('connection', (socket: WebSocket & { isAlive?: boolean }) => {
+    wss.on('connection', async (socket: WebSocket & { isAlive?: boolean }, req: Request) => {
+        if (wsArcjet) {
+            try {
+                const decision = await wsArcjet.protect(req)
+
+                if (decision.isDenied()) {
+                    const code = decision.reason.isRateLimit() ? 1013 : 1008;
+                    const reasion = decision.reason.isRateLimit() ? 'Too many requests' : 'access denied';
+                    socket.close(code, reasion);
+                }
+            } catch (error) {
+                console.error('Error in Arcjet WebSocket protection:', error);
+                socket.close(1011, 'Server security error');
+                return;
+            }
+        }
+
         socket.isAlive = true;
         socket.on('pong', () => {
             socket.isAlive = true;
@@ -45,8 +63,6 @@ export function attachWebSocketServer(server: Server) {
         });
 
         socket.on('error', console.error);
-
-
     });
 
     const interval = setInterval(() => {
