@@ -5,7 +5,7 @@ import { createMatchSchema, listMatchesQuerySchema } from "@/validation/matches.
 import { desc } from "drizzle-orm"
 import { Router } from "express"
 import type { Request, Response } from "express"
-import { parse } from "node:path"
+
 
 
 export const matchesRouter: Router = Router()
@@ -52,6 +52,10 @@ matchesRouter.post("/", async (req: Request, res: Response) => {
         }
 
         const [event] = await db.insert(matches).values(matchData).returning()
+
+        if (res.app.locals.broadcastMatchCreated) {
+            res.app.locals.broadcastMatchCreated(event)
+        }
 
         res.status(201).json({ data: event })
     } catch (error) {
